@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ecommerce-api-sa
+  namespace: ecommerce-prod
+  annotations:
+    # Maps directly to your Azure Managed Identity client ID
+    azure.workload.identity/client-id: "00000000-0000-0000-0000-000000000000"
+  labels:
+    azure.workload.identity/use: "true"

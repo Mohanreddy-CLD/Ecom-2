@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecommerce-api
+  namespace: ecommerce-prod
+  labels:
+    app: ecommerce-api
+    component: backend
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: ecommerce-api
+  template:
+    metadata:
+      labels:
+        app: ecommerce-api
+        azure.workload.identity/use: "true"
+    spec:
+      serviceAccountName: ecommerce-api-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: api-server
+        image: ://microsoft.com # Swap with your Azure Container Registry (ACR) URI
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        envFrom:
+        - configMapRef:
+            name: api-config
+        env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: DB_USERNAME
+        - name: DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: database-credentials
+              key: DB_PASSWORD
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
